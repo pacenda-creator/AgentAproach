@@ -1,6 +1,15 @@
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from tools import get_invoice, get_tariff
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = OpenAI()
+
+import os
+
 
 question = input("Napiš dotaz: ")
 
@@ -13,22 +22,31 @@ def route(state):
     return state["intent"]
 
 def router_node(state):
+
     question = state["question"]
 
-    if "faktura" in question.lower():
-        return {
-            "intent": "billing"
-        }
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=f"""
+        Jsi router.
 
-    elif "tarif" in question.lower():
-        return {
-            "intent": "sales"
-        }
+        Možné intenty:
+        billing
+        sales
+        unknown
 
-    else:
-        return {
-            "intent": "unknown"
-        }
+        Vrať pouze intent.
+
+        Dotaz:
+        {question}
+        """
+    )
+
+    intent = response.output_text.strip()
+
+    return {
+        "intent": intent
+    }
 
 def billing_node(state):
     return {"answer": get_invoice()}
