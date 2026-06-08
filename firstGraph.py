@@ -1,6 +1,8 @@
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
+from tools import get_invoice, get_tariff
 
+question = input("Napiš dotaz: ")
 
 class State(TypedDict):
     question: str
@@ -10,31 +12,39 @@ class State(TypedDict):
 def route(state):
     return state["intent"]
 
-def hello_node(state):
-    print ("start")
-    return {}
-
 def router_node(state):
-    print ("router")
-    return {
-        "intent": "sales"
-    }
+    question = state["question"]
+
+    if "faktura" in question.lower():
+        return {
+            "intent": "billing"
+        }
+
+    elif "tarif" in question.lower():
+        return {
+            "intent": "sales"
+        }
+
+    else:
+        return {
+            "intent": "unknown"
+        }
 
 def billing_node(state):
-    return {"answer": "Poslední faktura: 499 Kč"}
+    return {"answer": get_invoice()}
 
 def sales_node(state):
-    return {"answer": "Doporučuji tarif Premium"}
+    return {"answer": get_tariff()}
 
 
 graph = StateGraph(State)
 
-graph.add_node("hello", hello_node)
+
 graph.add_node("billing", billing_node)
 graph.add_node("sales", sales_node)
 graph.add_node("router", router_node)
 
-graph.set_entry_point("hello")
+graph.set_entry_point("router")
                       
 graph.add_conditional_edges(
     "router",
@@ -45,12 +55,12 @@ graph.add_conditional_edges(
     }
 )
 
-graph.add_edge("hello", "router")
+
 graph.add_edge("billing", END)
 graph.add_edge("sales", END)
 
 app = graph.compile()
 
-result = app.invoke({"question": "Jaká je moje faktura?"})
+result = app.invoke({"question": question})
 
-print(result)
+print(result["answer"])
